@@ -39,6 +39,7 @@ def simulate_gbm(S0, vols, corr, T=1, mu=0, n_steps=2, n_sim=100, show_plt=False
     R = np.linalg.cholesky(corr)
     eps = R @ W.T  # W is n_var x (n_sim*n_steps)
     eps = np.swapaxes(eps.reshape((n_vars, n_steps, n_sim)), 0, 2)  # eps is n_sim, n_steps, n_vars
+    eps[(int(n_sim / 2)):, :, :] = -eps[:int(n_sim / 2), :, :]
     W = np.cumsum(eps, axis=1) * np.sqrt(dt)  ### standard brownian motion ###
     W[:, 0, :] = 0  # To make it coherent with dt that starts in 0
     X = (mu - 0.5 * sig ** 2) * t + sig * W
@@ -141,8 +142,8 @@ def main():
                      [rho13, rho23, 1]])
 
     T = 1
-    #S = simulate_gbm(S0, vols, corr, T=T, mu=0, n_steps=50, n_sim=1000, show_plt=True)
-    S = simulate_gbm(S0, vols, corr, T=T, mu=0, n_steps=50, n_sim=1000)
+    S = simulate_gbm(S0, vols, corr, T=T, mu=0, n_steps=50, n_sim=1000, show_plt=True)
+    #S = simulate_gbm(S0, vols, corr, T=T, mu=0, n_steps=50, n_sim=1000)
 
     # S0 = S0[:2]
     # vols = vols[:2]
