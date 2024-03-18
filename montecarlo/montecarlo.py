@@ -27,11 +27,16 @@ def simulate_gbm(S0, vols, corr, T=1, mu=0, n_steps=2, n_sim=100, show_plt=False
     n_vars = len(S0)
 
     sim = np.zeros((n_sim, n_steps, n_vars))
-
-    t = np.broadcast_to(np.matlib.repmat(
-        np.linspace(0, T, n_steps), n_sim, 1
+    # Thanks Ivan Cuesta!!!
+    # t = np.broadcast_to(np.matlib.repmat(
+    #     np.linspace(0, T, n_steps), n_sim, 1
+    # ).reshape((n_sim, n_steps, 1)),
+    #                     sim.shape)  # t is n_sim x n_steps
+    t = np.broadcast_to(np.tile(
+        np.linspace(0, T, n_steps), (n_sim, 1)
     ).reshape((n_sim, n_steps, 1)),
                         sim.shape)  # t is n_sim x n_steps
+
     W = np.random.standard_normal(size=(n_steps * n_sim, n_vars))
     if debug_calcs:
         W = np.ones(W.shape)
@@ -87,7 +92,8 @@ def compute_margin_at_risk(S, freeze_dim=-1):
     p5_margin = margin[p5_indexes[-1]]
     avg_margin = margin.mean(axis=0)
 
-    p5_margin = numpy.percentile(margin, 5, axis=0, interpolation="nearest")
+    # p5_margin = numpy.percentile(margin, 5, axis=0, interpolation="nearest")
+    p5_margin = numpy.percentile(margin, 5, axis=0, method="nearest")
 
     plt.clf()
     plt.hist(margin)
