@@ -1,16 +1,18 @@
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.matlib
 import warnings
 
 
 def simulate_gbm(S0, vols, corr, T=1, mu=0, n_steps=2, n_sim=100, show_plt=False, debug_calcs=False):
     """
     Runs a geometric brownian motion simulation
-    :param S0: initial value of variables
-    :param vols: volatilities
-    :param corr: correlation matrix
-    :param T: total time of simulation
+    :param S0: initial value of variables. A list or an array, one value per variable
+    :param vols: volatilities. A list or an array, one value per variable
+    :param corr: correlation matrix. A list of lists or an array, one value per variable. E.g. for two variables,
+    if correlation is 0.5 it would be [[1, 0.5][0.5, 1]]
+    :param T: total time of simulation (years)
     :param mu: expected return (0 for futures)
     :param n_steps: number of steps, including initial value
     :param n_sim: number of simulations
@@ -41,10 +43,14 @@ def simulate_gbm(S0, vols, corr, T=1, mu=0, n_steps=2, n_sim=100, show_plt=False
     if debug_calcs:
         W = np.ones(W.shape)
     # make them correlated
-    R = np.linalg.cholesky(corr)
-    eps = R @ W.T  # W is n_var x (n_sim*n_steps)
+    if n_vars > 1:
+        R = np.linalg.cholesky(corr)
+        eps = R @ W.T  # W is n_var x (n_sim*n_steps)
+    else:
+        eps = W
     eps = np.swapaxes(eps.reshape((n_vars, n_steps, n_sim)), 0, 2)  # eps is n_sim, n_steps, n_vars
-    eps[(int(n_sim / 2)):, :, :] = -eps[:int(n_sim / 2), :, :]
+    if n_sim > 2:
+        eps[(int(n_sim / 2)):, :, :] = -eps[:int(n_sim / 2), :, :]
     W = np.cumsum(eps, axis=1) * np.sqrt(dt)  ### standard brownian motion ###
     W[:, 0, :] = 0  # To make it coherent with dt that starts in 0
     X = (mu - 0.5 * sig ** 2) * t + sig * W
@@ -93,7 +99,7 @@ def compute_margin_at_risk(S, freeze_dim=-1):
     avg_margin = margin.mean(axis=0)
 
     # p5_margin = numpy.percentile(margin, 5, axis=0, interpolation="nearest")
-    p5_margin = numpy.percentile(margin, 5, axis=0, method="nearest")
+    p5_margin = np.percentile(margin, 5, axis=0, method="nearest")
 
     plt.clf()
     plt.hist(margin)
@@ -103,14 +109,13 @@ def compute_margin_at_risk(S, freeze_dim=-1):
     return MaR
 
 
-def check_statistical_properties(S, T):
+def check_statistical_properties(S, T: float) -> Tuple:
     """
-    Calculates volatilites and correlation (anualized) of the Sample S
-    :param T: total time of simulation
+    Calculates volatility and correlation (annualized) of the Sample S
+    :param T: total time of simulation (needed to annualize data)
     :param S: n_sim x n_step x n_vars
-    :return: None
+    :return: a tuple with volatilities and correlations
     """
-
     # compute returns
     logreturns = np.log(S[:, :-1, :] / S[:, 1:, :])
     anualized_vols = np.std(logreturns, axis=1).mean(axis=0) * np.sqrt(S.shape[1] / T)
@@ -125,6 +130,7 @@ def check_statistical_properties(S, T):
                                        logreturns[i_sim, :, j], rowvar=False)[1, 0]
             corr.append(corr_sim / S.shape[0])
     print(f"Correlations: {corr}")
+    return anualized_vols, corr
 
 
 def main():
